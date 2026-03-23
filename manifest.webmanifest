@@ -1,0 +1,17 @@
+{
+  "name": "Softball Lineup Fairness Planner",
+  "short_name": "Softball Planner",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#eef5ff",
+  "theme_color": "#0f56c7",
+  "description": "Offline softball lineup planner with printable packets and season fairness tracking.",
+  "icons": [
+    {
+      "src": "./icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

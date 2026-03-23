@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coach Instructions</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .instructions-shell {
+        width: min(900px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0 56px;
+      }
+
+      .instructions-card {
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .instructions-card h1 {
+        max-width: none;
+      }
+
+      .instructions-card ol,
+      .instructions-card ul {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .instructions-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .instructions-links a {
+        display: inline-flex;
+        padding: 12px 18px;
+        border-radius: 999px;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="instructions-shell">
+      <section class="instructions-card">
+        <p class="eyebrow">League Share Guide</p>
+        <h1>Coach Instructions</h1>
+        <p class="hero-copy">
+          This planner builds inning-by-inning softball lineups, printable field cards,
+          and season fairness tracking for each team.
+        </p>
+
+        <h2>Quick Start</h2>
+        <ol>
+          <li>Enter your team name and choose your two team colors.</li>
+          <li>Enter your full roster and click <strong>Save roster</strong>.</li>
+          <li>Check only the players attending this game.</li>
+          <li>Add opponent, game date, game time, and planned innings.</li>
+          <li>Click <strong>Generate packet</strong>.</li>
+          <li>After the game, change <strong>Innings actually played</strong> if needed, then click <strong>Save game to season</strong>.</li>
+        </ol>
+
+        <h2>Helpful Tips</h2>
+        <ul>
+          <li><strong>Undo last save</strong> removes an accidental game save.</li>
+          <li><strong>Export data</strong> saves your roster, branding, and season stats into one file.</li>
+          <li><strong>Import data</strong> loads that file on another device or browser.</li>
+          <li>The batting-order page always shows 12 lines so you can hand-write a late arrival.</li>
+        </ul>
+
+        <h2>Sharing With Another Coach</h2>
+        <ol>
+          <li>Click <strong>Export data</strong>.</li>
+          <li>Send the exported `.json` file to the other coach.</li>
+          <li>They open the app and click <strong>Import data</strong>.</li>
+        </ol>
+
+        <h2>iPad And iPhone</h2>
+        <ol>
+          <li>Open the published site in Safari.</li>
+          <li>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</li>
+          <li>Open the home-screen app once while online so it caches the files.</li>
+          <li>After that, it can open without internet.</li>
+          <li>Use <strong>Print / Save PDF</strong> to export the packet from the app.</li>
+        </ol>
+
+        <div class="instructions-links">
+          <a class="primary-button" href="./index.html">Open Planner</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

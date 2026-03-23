@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Softball Lineup Fairness Planner</title>
+    <meta name="theme-color" content="#0f56c7" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Softball Planner" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/app-icon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero no-print">
+        <p class="eyebrow">6U Softball Lineup Builder</p>
+        <h1>Printable lineups that keep every kid on the field.</h1>
+        <p class="hero-copy">
+          Everyone plays every inning. The app rotates girls between infield and outfield,
+          tries to avoid back-to-back infield innings when possible, and shares pitcher,
+          first, shortstop, and third base over the course of the season.
+        </p>
+      </section>
+
+      <section class="panel layout-two no-print">
+        <div class="card">
+          <div class="section-heading">
+            <h2>Roster</h2>
+            <div class="button-row">
+              <button id="save-roster" class="secondary-button" type="button">Save roster</button>
+              <button id="export-data" class="secondary-button" type="button">Export data</button>
+              <button id="import-data" class="secondary-button" type="button">Import data</button>
+              <button id="fill-sample" class="secondary-button" type="button">Load sample roster</button>
+            </div>
+          </div>
+          <label class="field-label" for="team-name">Team name</label>
+          <input id="team-name" type="text" placeholder="Koalas" />
+          <div class="grid branding-grid">
+            <div>
+              <label class="field-label" for="primary-color">Primary color</label>
+              <input id="primary-color" type="color" value="#0f56c7" />
+            </div>
+            <div>
+              <label class="field-label" for="secondary-color">Secondary color</label>
+              <input id="secondary-color" type="color" value="#ff3ca6" />
+            </div>
+          </div>
+          <p class="hint">Set each team’s two main colors here. The web app and printable packet will update automatically.</p>
+
+          <label class="field-label" for="roster-input">Players</label>
+          <textarea
+            id="roster-input"
+            rows="14"
+            placeholder="One player per line&#10;Ava&#10;Bella&#10;Chloe&#10;..."
+          ></textarea>
+          <p class="hint">Use one player per line. A 12-player roster gives you 5 infielders and 7 outfielders each inning.</p>
+
+          <label class="field-label" for="attendance-list">Attending This Game</label>
+          <div id="attendance-list" class="attendance-list"></div>
+          <p class="hint">Check the players who are at this game. The full roster stays saved above.</p>
+        </div>
+
+        <div class="card">
+          <div class="section-heading">
+            <h2>Game Setup</h2>
+          </div>
+
+          <div class="grid single-grid">
+            <div>
+              <label class="field-label" for="opponent">Opponent</label>
+              <input id="opponent" type="text" placeholder="Tigers" />
+            </div>
+            <div>
+              <label class="field-label" for="game-date">Game date</label>
+              <input id="game-date" type="date" />
+            </div>
+            <div>
+              <label class="field-label" for="game-time">Game time</label>
+              <input id="game-time" type="time" />
+            </div>
+          </div>
+
+          <div class="grid single-grid">
+            <div>
+              <label class="field-label" for="innings">Innings</label>
+              <input id="innings" type="number" min="1" max="12" value="4" />
+            </div>
+            <div>
+              <label class="field-label" for="innings-played">Innings actually played</label>
+              <input id="innings-played" type="number" min="1" max="12" value="4" />
+            </div>
+          </div>
+          <p class="hint">Generate as many innings as you want. Before saving, set how many innings you actually played so season fairness stays accurate.</p>
+
+          <h3>Active Rules</h3>
+          <ul class="rule-list">
+            <li>No bench. Everyone is assigned a spot every inning.</li>
+            <li>Infield spots are Pitcher, 1st Base, 2nd Base, Shortstop, and 3rd Base.</li>
+            <li>All remaining players are spread across the outfield.</li>
+            <li>No one stays in the same field area two innings in a row unless the roster size forces it.</li>
+            <li>Pitcher, 1st, Shortstop, and 3rd are rotated fairly across games and the season.</li>
+            <li>Batting order rotates by saved game so the same player does not always lead off.</li>
+          </ul>
+          <p class="hint">
+            Fewer than 12 players: the outfield removes <strong>Right Deep</strong> first, then
+            <strong>Left Deep</strong>. When deep spots are gone, the outside spots are labeled
+            <strong>Left Field</strong> and <strong>Right Field</strong>.
+          </p>
+
+          <div class="button-row">
+            <button id="generate" class="primary-button" type="button">Generate packet</button>
+            <button id="print-packet" class="secondary-button" type="button">Print / Save PDF</button>
+            <button id="save-game" class="secondary-button" type="button">Save game to season</button>
+            <button id="undo-save" class="secondary-button" type="button">Undo last save</button>
+            <button id="reset-season" class="ghost-button" type="button">Reset season stats</button>
+          </div>
+
+          <div id="status" class="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="panel layout-two">
+        <div class="card">
+          <div class="section-heading">
+            <h2>Printable Packet</h2>
+          </div>
+          <div id="lineup-output" class="empty-state">
+            Generate a packet to see the coach sheet and inning-by-inning field cards.
+          </div>
+        </div>
+
+        <div class="card no-print">
+          <div class="section-heading">
+            <h2>Season Fairness Snapshot</h2>
+          </div>
+          <div id="season-summary" class="empty-state">
+            No season data yet. Save a generated game to start tracking position fairness.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <input id="import-file" type="file" accept="application/json" hidden />
+    <script src="app.js"></script>
+  </body>
+</html>
