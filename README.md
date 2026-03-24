@@ -11,29 +11,6 @@ Shareable browser app for printable softball lineup packets, attendance-aware ga
 - Save only the innings actually played
 - Export/import of roster, branding, and season data between devices
 
-## Local Use
-
-1. Open [index.html](/Users/michaeldachs/Documents/New%20project/index.html) in Chrome or Safari.
-2. Set team name and colors.
-3. Save the roster.
-4. Check the players attending that game.
-5. Generate, print, and save the game after it is played.
-
-Coach instructions are also available in [coach-instructions.html](/Users/michaeldachs/Documents/New%20project/coach-instructions.html).
-
-## GitHub Pages
-
-This folder is ready for GitHub Pages as a static site.
-
-1. Create a new GitHub repository.
-2. Upload all files in this folder.
-3. In GitHub, open `Settings` > `Pages`.
-4. Set the source to `Deploy from a branch`.
-5. Choose the `main` branch and the `/ (root)` folder.
-6. Save, then wait for the site URL to appear.
-
-The included `.nojekyll` file helps GitHub Pages serve the site exactly as a plain static app.
-
 ## iPad / iPhone App Mode
 
 After publishing, coaches can install it like an app:
