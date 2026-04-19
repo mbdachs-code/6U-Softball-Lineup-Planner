@@ -1,0 +1,1 @@
+window.SOFTBALL_PLANNER_VERSION = "v1.1.0";

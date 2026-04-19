@@ -81,6 +81,19 @@ h1 {
   line-height: 1.55;
 }
 
+.app-version {
+  display: inline-flex;
+  margin: 18px 0 0;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent-dark);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .panel {
   margin-top: 24px;
 }
@@ -220,6 +233,43 @@ input[type="color"] {
 
 .attendance-name {
   font-weight: 600;
+}
+
+.saved-games-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-game-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.saved-game-title {
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.saved-game-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 4px;
+}
+
+.saved-game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved-game-actions button {
+  padding: 10px 14px;
 }
 
 .button-row {

@@ -1,5 +1,6 @@
 const STORAGE_KEY = "softball-lineup-fairness-season";
 const ROSTER_STORAGE_KEY = "softball-lineup-fairness-roster";
+const APP_VERSION = window.SOFTBALL_PLANNER_VERSION || "v1.1.0";
 const DEFAULT_BRANDING = {
   primaryColor: "#0f56c7",
   secondaryColor: "#ff3ca6",
@@ -52,6 +53,7 @@ const elements = {
   exportData: document.querySelector("#export-data"),
   importData: document.querySelector("#import-data"),
   importFile: document.querySelector("#import-file"),
+  saveGameRecord: document.querySelector("#save-game-record"),
   saveGame: document.querySelector("#save-game"),
   undoSave: document.querySelector("#undo-save"),
   resetSeason: document.querySelector("#reset-season"),
@@ -59,7 +61,9 @@ const elements = {
   printPacket: document.querySelector("#print-packet"),
   lineupOutput: document.querySelector("#lineup-output"),
   seasonSummary: document.querySelector("#season-summary"),
+  savedGames: document.querySelector("#saved-games"),
   status: document.querySelector("#status"),
+  appVersion: document.querySelector("#app-version"),
 };
 
 function escapeHtml(value) {
@@ -164,7 +168,7 @@ function readSeason() {
   const raw = localStorage.getItem(STORAGE_KEY);
 
   if (!raw) {
-    return { players: {}, gamesSaved: 0, savedAt: null, undoStack: [] };
+    return { players: {}, gamesSaved: 0, savedAt: null, undoStack: [], games: [] };
   }
 
   try {
@@ -176,9 +180,10 @@ function readSeason() {
       gamesSaved: parsed.gamesSaved || 0,
       savedAt: parsed.savedAt || null,
       undoStack: Array.isArray(parsed.undoStack) ? parsed.undoStack : [],
+      games: Array.isArray(parsed.games) ? parsed.games : [],
     };
   } catch {
-    return { players: {}, gamesSaved: 0, savedAt: null, undoStack: [] };
+    return { players: {}, gamesSaved: 0, savedAt: null, undoStack: [], games: [] };
   }
 }
 
@@ -216,6 +221,12 @@ function readSavedRoster() {
     };
   } catch {
     return null;
+  }
+}
+
+function renderAppVersion() {
+  if (elements.appVersion) {
+    elements.appVersion.textContent = "Version " + APP_VERSION;
   }
 }
 
@@ -318,7 +329,140 @@ function buildUndoSnapshot(season) {
     players: cloneSeason(season.players || {}),
     gamesSaved: season.gamesSaved || 0,
     savedAt: season.savedAt || null,
+    games: cloneSeason(season.games || []),
   };
+}
+
+
+function createGameId() {
+  return `game-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function upsertGameRecord(season, gameRecord) {
+  const games = Array.isArray(season.games) ? season.games : [];
+  const existingIndex = games.findIndex((game) => game.id === gameRecord.id);
+
+  if (existingIndex >= 0) {
+    games[existingIndex] = gameRecord;
+  } else {
+    games.unshift(gameRecord);
+  }
+
+  season.games = games;
+}
+
+function formatGameCardTitle(game) {
+  const dateText = formatGameDate(game.config?.gameDate);
+  const opponentText = game.config?.opponent ? `vs ${game.config.opponent}` : "Opponent TBD";
+  return [dateText, opponentText].filter(Boolean).join(" • ") || "Saved game";
+}
+
+function buildCurrentGameRecord(statusOverride) {
+  if (!state.latestGame) {
+    return null;
+  }
+
+  return {
+    id: state.latestGame.id || createGameId(),
+    teamName: elements.teamName.value.trim() || "Koalas",
+    roster: cloneSeason(state.latestGame.roster),
+    attendanceByPlayer: cloneSeason(state.attendanceByPlayer),
+    branding: getBranding(),
+    config: cloneSeason(state.latestGame.config),
+    battingOrder: cloneSeason(state.latestGame.battingOrder),
+    innings: cloneSeason(state.latestGame.innings),
+    inningsPlayed: Number(elements.inningsPlayed.value) || state.latestGame.config.innings,
+    status: statusOverride || state.latestGame.status || "draft",
+    createdAt: state.latestGame.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    appliedToSeason: Boolean(
+      state.latestGame.appliedToSeason && (statusOverride || state.latestGame.status) === "finalized",
+    ),
+  };
+}
+
+function renderSavedGames() {
+  const season = readSeason();
+  const games = Array.isArray(season.games) ? season.games : [];
+
+  if (!games.length) {
+    elements.savedGames.innerHTML =
+      '<div class="empty-state">No saved games yet. Generate a packet and save a game record to come back later.</div>';
+    return;
+  }
+
+  elements.savedGames.innerHTML = `
+    <div class="saved-games-list">
+      ${games
+        .map(
+          (game) => `
+            <div class="saved-game-row">
+              <div>
+                <div class="saved-game-title">${escapeHtml(formatGameCardTitle(game))}</div>
+                <div class="saved-game-meta">
+                  ${escapeHtml(game.teamName || "Team")} • ${game.status === "finalized" ? "Finalized" : "Draft"} •
+                  Planned ${game.config?.innings || 0} inning(s) • Played ${game.inningsPlayed || game.config?.innings || 0}
+                </div>
+              </div>
+              <div class="saved-game-actions">
+                <button class="secondary-button load-game-button" type="button" data-game-id="${escapeHtml(game.id)}">Load</button>
+              </div>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+
+  elements.savedGames.querySelectorAll(".load-game-button").forEach((button) => {
+    button.addEventListener("click", () => loadSavedGame(button.dataset.gameId));
+  });
+}
+
+function loadSavedGame(gameId) {
+  const season = readSeason();
+  const game = (season.games || []).find((entry) => entry.id === gameId);
+
+  if (!game) {
+    setStatus("That saved game could not be found.");
+    return;
+  }
+
+  elements.teamName.value = game.teamName || "Koalas";
+  elements.rosterInput.value = (game.roster || []).join("\n");
+  applyBranding(game.branding || DEFAULT_BRANDING);
+  elements.opponent.value = game.config?.opponent || "";
+  elements.gameDate.value = game.config?.gameDate || "";
+  elements.gameTime.value = game.config?.gameTime || "";
+  elements.innings.value = String(game.config?.innings || 4);
+  elements.inningsPlayed.value = String(game.inningsPlayed || game.config?.innings || 4);
+  elements.inningsPlayed.max = String(game.config?.innings || 4);
+  state.attendanceByPlayer = game.attendanceByPlayer || {};
+  syncAttendanceState(game.roster || []);
+  renderAttendanceList();
+
+  state.latestGame = {
+    id: game.id,
+    createdAt: game.createdAt,
+    appliedToSeason: game.appliedToSeason,
+    status: game.status,
+    roster: cloneSeason(game.roster || []),
+    config: cloneSeason(game.config || {}),
+    battingOrder: cloneSeason(game.battingOrder || []),
+    innings: cloneSeason(game.innings || []),
+  };
+
+  renderLineups(
+    {
+      config: cloneSeason(game.config || {}),
+      battingOrder: cloneSeason(game.battingOrder || []),
+      innings: cloneSeason(game.innings || []),
+    },
+    elements.teamName.value.trim(),
+  );
+  renderSeasonSummary(getMasterRoster());
+  syncDocumentTitle(getConfig());
+  setStatus(`Loaded saved game: ${formatGameCardTitle(game)}.`);
 }
 
 function normalizeRoster(text) {
@@ -763,11 +907,8 @@ function renderGameMeta(config = {}) {
     config.opponent ? `vs ${escapeHtml(config.opponent)}` : "",
     formatGameDate(config.gameDate),
     formatGameTime(config.gameTime),
+    "Version " + APP_VERSION,
   ].filter(Boolean);
-
-  if (!parts.length) {
-    return "";
-  }
 
   return `<div class="print-meta">${parts.join(" • ")}</div>`;
 }
@@ -861,7 +1002,12 @@ function renderLineups(gamePlan, teamName) {
     <div class="packet">${coachReferencePage}${coachSheet}${fieldPages}</div>
   `;
 
-  document.querySelector("#print-inline").addEventListener("click", () => window.print());
+  document.querySelector("#print-inline").addEventListener("click", () => {
+    if (state.latestGame) {
+      saveGameRecord({ silent: true });
+    }
+    window.print();
+  });
 }
 
 function renderSeasonSummary(roster) {
@@ -912,6 +1058,30 @@ function renderSeasonSummary(roster) {
   `;
 }
 
+
+function saveGameRecord(options = {}) {
+  if (!state.latestGame) {
+    setStatus("Generate a lineup packet before saving a game record.");
+    return null;
+  }
+
+  const season = readSeason();
+  const record = buildCurrentGameRecord(state.latestGame.status || "draft");
+  upsertGameRecord(season, record);
+  writeSeason(season);
+
+  state.latestGame.id = record.id;
+  state.latestGame.createdAt = record.createdAt;
+  state.latestGame.status = record.status;
+  renderSavedGames();
+
+  if (!options.silent) {
+    setStatus(`Saved game record: ${formatGameCardTitle(record)}.`);
+  }
+
+  return record;
+}
+
 function saveLatestGame() {
   if (!state.latestGame) {
     setStatus("Generate a lineup packet before saving the game.");
@@ -933,7 +1103,16 @@ function saveLatestGame() {
     return;
   }
 
-  const inningsToSave = innings.slice(0, inningsPlayed);
+const inningsToSave = innings.slice(0, inningsPlayed);
+const existingGame =
+  state.latestGame.id && Array.isArray(season.games)
+    ? season.games.find((game) => game.id === state.latestGame.id)
+    : null;
+
+if (existingGame?.appliedToSeason) {
+  setStatus("That game is already finalized in season stats.");
+  return;
+}
 
   ensurePlayersExist(season, roster);
 
@@ -972,12 +1151,21 @@ function saveLatestGame() {
     });
   });
 
-  season.gamesSaved += 1;
-  season.savedAt = new Date().toISOString();
-  season.undoStack = [...(season.undoStack || []), previousSeasonSnapshot].slice(-MAX_UNDO_HISTORY);
-  writeSeason(season);
-  renderSeasonSummary(roster);
-  setStatus(`Saved ${inningsPlayed} played inning${inningsPlayed === 1 ? "" : "s"} to season stats.`);
+season.gamesSaved += 1;
+season.savedAt = new Date().toISOString();
+season.undoStack = [...(season.undoStack || []), previousSeasonSnapshot].slice(-MAX_UNDO_HISTORY);
+const finalizedRecord = buildCurrentGameRecord("finalized");
+finalizedRecord.inningsPlayed = inningsPlayed;
+finalizedRecord.appliedToSeason = true;
+upsertGameRecord(season, finalizedRecord);
+writeSeason(season);
+state.latestGame.id = finalizedRecord.id;
+state.latestGame.createdAt = finalizedRecord.createdAt;
+state.latestGame.status = "finalized";
+state.latestGame.appliedToSeason = true;
+renderSeasonSummary(roster);
+renderSavedGames();
+setStatus(`Saved ${inningsPlayed} played inning${inningsPlayed === 1 ? "" : "s"} to season stats.`);
 }
 
 function saveRoster() {
@@ -998,6 +1186,7 @@ function saveRoster() {
 function exportData() {
   const exportBundle = {
     version: 1,
+    appVersion: APP_VERSION,
     exportedAt: new Date().toISOString(),
     roster: {
       teamName: elements.teamName.value.trim(),
@@ -1057,6 +1246,7 @@ function importDataFile(file) {
           gamesSaved: parsed.season.gamesSaved || 0,
           savedAt: parsed.season.savedAt || null,
           undoStack: Array.isArray(parsed.season.undoStack) ? parsed.season.undoStack : [],
+          games: Array.isArray(parsed.season.games) ? parsed.season.games : [],
         };
         writeSeason(normalizedSeason);
       }
@@ -1075,6 +1265,7 @@ function importDataFile(file) {
         syncAttendanceState(importedRoster.players);
         renderAttendanceList();
         renderSeasonSummary(importedRoster.players);
+        renderSavedGames();
       }
 
       syncDocumentTitle(getConfig());
@@ -1106,11 +1297,13 @@ function undoLastSave() {
     gamesSaved: previousSeason.gamesSaved || 0,
     savedAt: previousSeason.savedAt || null,
     undoStack: undoStack.slice(0, -1),
+    games: cloneSeason(previousSeason.games || []),
   };
 
   writeSeason(restoredSeason);
   const roster = normalizeRoster(elements.rosterInput.value);
   renderSeasonSummary(roster);
+  renderSavedGames();
   setStatus("Undid the last saved game.");
 }
 
@@ -1138,6 +1331,8 @@ function onGenerate() {
     config,
     battingOrder: gamePlan.battingOrder,
     innings: gamePlan.innings,
+    status: "draft",
+    appliedToSeason: false,
   };
 
   elements.inningsPlayed.value = String(config.innings);
@@ -1145,6 +1340,7 @@ function onGenerate() {
 
   renderLineups(gamePlan, elements.teamName.value.trim());
   renderSeasonSummary(roster);
+  renderSavedGames();
   setStatus(`Generated a printable ${config.innings}-inning packet for ${roster.length} players.`);
 }
 
@@ -1152,11 +1348,13 @@ function onResetSeason() {
   localStorage.removeItem(STORAGE_KEY);
   const roster = getMasterRoster();
   renderSeasonSummary(roster);
+  renderSavedGames();
   setStatus("Season stats reset.");
 }
 
 function hydrateDefaults() {
   const savedRoster = readSavedRoster();
+  renderAppVersion();
   elements.innings.value = "4";
   elements.inningsPlayed.value = "4";
   elements.inningsPlayed.max = "4";
@@ -1170,6 +1368,7 @@ function hydrateDefaults() {
     syncAttendanceState(savedRoster.players);
     renderAttendanceList();
     renderSeasonSummary(savedRoster.players);
+    renderSavedGames();
     syncDocumentTitle(getConfig());
     return;
   }
@@ -1180,6 +1379,7 @@ function hydrateDefaults() {
   syncAttendanceState(sampleRoster);
   renderAttendanceList();
   renderSeasonSummary(sampleRoster);
+  renderSavedGames();
   syncDocumentTitle(getConfig());
 }
 
@@ -1205,6 +1405,7 @@ elements.importFile.addEventListener("change", (event) => {
     importDataFile(file);
   }
 });
+elements.saveGameRecord.addEventListener("click", saveGameRecord);
 elements.saveGame.addEventListener("click", saveLatestGame);
 elements.undoSave.addEventListener("click", undoLastSave);
 elements.resetSeason.addEventListener("click", onResetSeason);
@@ -1217,7 +1418,12 @@ elements.fillSample.addEventListener("click", () => {
   renderSeasonSummary(sampleRoster);
   setStatus("Sample 12-player roster loaded.");
 });
-elements.printPacket.addEventListener("click", () => window.print());
+elements.printPacket.addEventListener("click", () => {
+  if (state.latestGame) {
+    saveGameRecord({ silent: true });
+  }
+  window.print();
+});
 elements.teamName.addEventListener("input", () => syncDocumentTitle(getConfig()));
 elements.opponent.addEventListener("input", () => syncDocumentTitle(getConfig()));
 elements.gameDate.addEventListener("input", () => syncDocumentTitle(getConfig()));

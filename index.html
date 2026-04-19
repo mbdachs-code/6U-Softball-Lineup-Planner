@@ -22,6 +22,7 @@
           tries to avoid back-to-back infield innings when possible, and shares pitcher,
           first, shortstop, and third base over the course of the season.
         </p>
+        <p id="app-version" class="app-version"></p>
       </section>
 
       <section class="panel layout-two no-print">
@@ -112,7 +113,8 @@
           <div class="button-row">
             <button id="generate" class="primary-button" type="button">Generate packet</button>
             <button id="print-packet" class="secondary-button" type="button">Print / Save PDF</button>
-            <button id="save-game" class="secondary-button" type="button">Save game to season</button>
+            <button id="save-game-record" class="secondary-button" type="button">Save game record</button>
+            <button id="save-game" class="secondary-button" type="button">Finalize game to season</button>
             <button id="undo-save" class="secondary-button" type="button">Undo last save</button>
             <button id="reset-season" class="ghost-button" type="button">Reset season stats</button>
           </div>
@@ -140,9 +142,21 @@
           </div>
         </div>
       </section>
+
+      <section class="panel no-print">
+        <div class="card">
+          <div class="section-heading">
+            <h2>Saved Games</h2>
+          </div>
+          <div id="saved-games" class="empty-state">
+            No saved games yet. Generate a packet and save a game record to come back later.
+          </div>
+        </div>
+      </section>
     </main>
 
     <input id="import-file" type="file" accept="application/json" hidden />
+    <script src="version.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
