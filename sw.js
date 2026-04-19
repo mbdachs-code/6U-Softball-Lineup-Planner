@@ -1,9 +1,10 @@
-const CACHE_NAME = "softball-planner-v1";
+const CACHE_NAME = "softball-planner-v2";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./version.js",
   "./manifest.webmanifest",
   "./coach-instructions.html",
   "./icons/app-icon.svg",
