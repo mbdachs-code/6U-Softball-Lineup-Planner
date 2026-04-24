@@ -1,6 +1,9 @@
 const STORAGE_KEY = "softball-lineup-fairness-season";
 const ROSTER_STORAGE_KEY = "softball-lineup-fairness-roster";
-const APP_VERSION = window.SOFTBALL_PLANNER_VERSION || "v1.1.0";
+const APP_RELEASES = Array.isArray(window.SOFTBALL_PLANNER_RELEASES) ? window.SOFTBALL_PLANNER_RELEASES : [];
+const CURRENT_RELEASE = APP_RELEASES[0] || null;
+const APP_VERSION =
+  CURRENT_RELEASE?.version || (APP_RELEASES.length ? `v1.${APP_RELEASES.length}.0` : "v1.0.0");
 const DEFAULT_BRANDING = {
   primaryColor: "#0f56c7",
   secondaryColor: "#ff3ca6",
@@ -64,6 +67,7 @@ const elements = {
   savedGames: document.querySelector("#saved-games"),
   status: document.querySelector("#status"),
   appVersion: document.querySelector("#app-version"),
+  appChangelog: document.querySelector("#app-changelog"),
 };
 
 function escapeHtml(value) {
@@ -226,8 +230,45 @@ function readSavedRoster() {
 
 function renderAppVersion() {
   if (elements.appVersion) {
-    elements.appVersion.textContent = "Version " + APP_VERSION;
+    const releaseDate = formatGameDate(CURRENT_RELEASE?.date);
+    elements.appVersion.textContent = releaseDate
+      ? `Version ${APP_VERSION} • ${releaseDate}`
+      : "Version " + APP_VERSION;
   }
+}
+
+function renderChangelog() {
+  if (!elements.appChangelog) {
+    return;
+  }
+
+  if (!CURRENT_RELEASE) {
+    elements.appChangelog.innerHTML = '<div class="empty-state">No release notes yet.</div>';
+    return;
+  }
+
+  const changes = Array.isArray(CURRENT_RELEASE.changes) ? CURRENT_RELEASE.changes : [];
+  const previousRelease = APP_RELEASES[1];
+
+  elements.appChangelog.innerHTML = `
+    <div class="changelog-current">
+      <div class="changelog-version-row">
+        <strong>${escapeHtml(APP_VERSION)}</strong>
+        <span>${escapeHtml(formatGameDate(CURRENT_RELEASE.date) || "")}</span>
+      </div>
+      <div class="changelog-summary">${escapeHtml(CURRENT_RELEASE.summary || "Latest update")}</div>
+      <ul class="changelog-list">
+        ${changes.map((change) => `<li>${escapeHtml(change)}</li>`).join("")}
+      </ul>
+      ${
+        previousRelease
+          ? `<div class="changelog-previous">Previous release: ${escapeHtml(
+              previousRelease.version || `v1.${Math.max(APP_RELEASES.length - 1, 0)}.0`,
+            )}${previousRelease.summary ? ` • ${escapeHtml(previousRelease.summary)}` : ""}</div>`
+          : ""
+      }
+    </div>
+  `;
 }
 
 function writeSavedRoster(
@@ -1231,6 +1272,8 @@ function exportData() {
   const exportBundle = {
     version: 1,
     appVersion: APP_VERSION,
+    releaseDate: CURRENT_RELEASE?.date || null,
+    releaseSummary: CURRENT_RELEASE?.summary || "",
     exportedAt: new Date().toISOString(),
     roster: {
       teamName: elements.teamName.value.trim(),
@@ -1400,6 +1443,7 @@ function onResetSeason() {
 function hydrateDefaults() {
   const savedRoster = readSavedRoster();
   renderAppVersion();
+  renderChangelog();
   elements.innings.value = "4";
   elements.inningsPlayed.value = "4";
   elements.inningsPlayed.max = "4";

@@ -1,10 +1,11 @@
-const CACHE_NAME = "softball-planner-v2";
+const CACHE_NAME = "softball-planner-v3";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./version.js",
+  "./CHANGELOG.md",
   "./manifest.webmanifest",
   "./coach-instructions.html",
   "./icons/app-icon.svg",
@@ -35,19 +36,25 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  const requestUrl = new URL(event.request.url);
+  const isLocalAsset = requestUrl.origin === self.location.origin;
 
-      return fetch(event.request)
-        .then((networkResponse) => {
-          const clonedResponse = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
-          return networkResponse;
-        })
-        .catch(() => caches.match("./index.html"));
-    }),
+  if (!isLocalAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) =>
+        cachedResponse || fetch(event.request).catch(() => caches.match("./index.html")),
+      ),
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        const clonedResponse = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request).then((cachedResponse) => cachedResponse || caches.match("./index.html"))),
   );
 });
