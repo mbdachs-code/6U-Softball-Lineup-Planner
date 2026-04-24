@@ -251,8 +251,37 @@ input[type="color"] {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.saved-game-title {
+.saved-games-summary {
+  margin-bottom: 12px;
+  color: var(--accent-dark);
   font-weight: 700;
+}
+
+.saved-game-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.saved-game-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.saved-game-badge-pending {
+  background: var(--brand-secondary-soft);
+  color: #9a1c63;
+}
+
+.saved-game-badge-finalized {
+  background: var(--brand-primary-soft);
   color: var(--accent-dark);
 }
 

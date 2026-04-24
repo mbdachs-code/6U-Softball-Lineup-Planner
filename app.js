@@ -351,6 +351,14 @@ function upsertGameRecord(season, gameRecord) {
   season.games = games;
 }
 
+function isGameFinalized(game) {
+  return Boolean(game?.appliedToSeason || game?.status === "finalized");
+}
+
+function getGameStatusLabel(game) {
+  return isGameFinalized(game) ? "Finalized" : "Needs innings played";
+}
+
 function formatGameCardTitle(game) {
   const dateText = formatGameDate(game.config?.gameDate);
   const opponentText = game.config?.opponent ? `vs ${game.config.opponent}` : "Opponent TBD";
@@ -362,6 +370,9 @@ function buildCurrentGameRecord(statusOverride) {
     return null;
   }
 
+  const status = statusOverride || state.latestGame.status || "draft";
+  const appliedToSeason = Boolean(state.latestGame.appliedToSeason && status === "finalized");
+
   return {
     id: state.latestGame.id || createGameId(),
     teamName: elements.teamName.value.trim() || "Koalas",
@@ -372,40 +383,71 @@ function buildCurrentGameRecord(statusOverride) {
     battingOrder: cloneSeason(state.latestGame.battingOrder),
     innings: cloneSeason(state.latestGame.innings),
     inningsPlayed: Number(elements.inningsPlayed.value) || state.latestGame.config.innings,
-    status: statusOverride || state.latestGame.status || "draft",
+    status,
     createdAt: state.latestGame.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    appliedToSeason: Boolean(
-      state.latestGame.appliedToSeason && (statusOverride || state.latestGame.status) === "finalized",
-    ),
+    needsFollowUp: !appliedToSeason,
+    appliedToSeason,
   };
 }
 
 function renderSavedGames() {
   const season = readSeason();
-  const games = Array.isArray(season.games) ? season.games : [];
+  const games = Array.isArray(season.games)
+    ? [...season.games].sort((left, right) => {
+        const leftPending = isGameFinalized(left) ? 1 : 0;
+        const rightPending = isGameFinalized(right) ? 1 : 0;
+
+        if (leftPending !== rightPending) {
+          return leftPending - rightPending;
+        }
+
+        return String(right.updatedAt || right.createdAt || "").localeCompare(
+          String(left.updatedAt || left.createdAt || ""),
+        );
+      })
+    : [];
 
   if (!games.length) {
     elements.savedGames.innerHTML =
-      '<div class="empty-state">No saved games yet. Generate a packet and save a game record to come back later.</div>';
+      '<div class="empty-state">No saved games yet. Generate a packet and it will auto-save here until you finalize it.</div>';
     return;
   }
 
+  const pendingGames = games.filter((game) => !isGameFinalized(game));
+  const summaryText = pendingGames.length
+    ? `${pendingGames.length} game${pendingGames.length === 1 ? "" : "s"} still need innings played.`
+    : "All saved games have been finalized into season stats.";
+
   elements.savedGames.innerHTML = `
+    <div class="saved-games-summary">${escapeHtml(summaryText)}</div>
     <div class="saved-games-list">
       ${games
         .map(
           (game) => `
             <div class="saved-game-row">
               <div>
-                <div class="saved-game-title">${escapeHtml(formatGameCardTitle(game))}</div>
+                <div class="saved-game-title">
+                  ${escapeHtml(formatGameCardTitle(game))}
+                  <span class="saved-game-badge ${isGameFinalized(game) ? "saved-game-badge-finalized" : "saved-game-badge-pending"}">
+                    ${escapeHtml(getGameStatusLabel(game))}
+                  </span>
+                </div>
                 <div class="saved-game-meta">
-                  ${escapeHtml(game.teamName || "Team")} • ${game.status === "finalized" ? "Finalized" : "Draft"} •
-                  Planned ${game.config?.innings || 0} inning(s) • Played ${game.inningsPlayed || game.config?.innings || 0}
+                  ${escapeHtml(game.teamName || "Team")} • Planned ${game.config?.innings || 0} inning(s) •
+                  Recorded ${game.inningsPlayed || game.config?.innings || 0} inning(s) •
+                  Updated ${escapeHtml(
+                    new Date(game.updatedAt || game.createdAt || Date.now()).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    }),
+                  )}
                 </div>
               </div>
               <div class="saved-game-actions">
-                <button class="secondary-button load-game-button" type="button" data-game-id="${escapeHtml(game.id)}">Load</button>
+                <button class="secondary-button load-game-button" type="button" data-game-id="${escapeHtml(game.id)}">
+                  ${isGameFinalized(game) ? "Load" : "Open & finalize"}
+                </button>
               </div>
             </div>
           `,
@@ -1067,6 +1109,7 @@ function saveGameRecord(options = {}) {
 
   const season = readSeason();
   const record = buildCurrentGameRecord(state.latestGame.status || "draft");
+  record.needsFollowUp = !isGameFinalized(record);
   upsertGameRecord(season, record);
   writeSeason(season);
 
@@ -1076,7 +1119,7 @@ function saveGameRecord(options = {}) {
   renderSavedGames();
 
   if (!options.silent) {
-    setStatus(`Saved game record: ${formatGameCardTitle(record)}.`);
+    setStatus(`Saved game record: ${formatGameCardTitle(record)}. You can come back later to enter innings played.`);
   }
 
   return record;
@@ -1157,6 +1200,7 @@ season.undoStack = [...(season.undoStack || []), previousSeasonSnapshot].slice(-
 const finalizedRecord = buildCurrentGameRecord("finalized");
 finalizedRecord.inningsPlayed = inningsPlayed;
 finalizedRecord.appliedToSeason = true;
+finalizedRecord.needsFollowUp = false;
 upsertGameRecord(season, finalizedRecord);
 writeSeason(season);
 state.latestGame.id = finalizedRecord.id;
@@ -1337,11 +1381,12 @@ function onGenerate() {
 
   elements.inningsPlayed.value = String(config.innings);
   elements.inningsPlayed.max = String(config.innings);
+  saveGameRecord({ silent: true });
 
   renderLineups(gamePlan, elements.teamName.value.trim());
   renderSeasonSummary(roster);
   renderSavedGames();
-  setStatus(`Generated a printable ${config.innings}-inning packet for ${roster.length} players.`);
+  setStatus(`Generated and auto-saved a printable ${config.innings}-inning packet for ${roster.length} players.`);
 }
 
 function onResetSeason() {
@@ -1389,6 +1434,19 @@ elements.innings.addEventListener("input", () => {
 
   if (Number(elements.inningsPlayed.value) > innings) {
     elements.inningsPlayed.value = String(innings);
+  }
+
+  if (state.latestGame && !state.latestGame.appliedToSeason) {
+    state.latestGame.config.innings = innings;
+    saveGameRecord({ silent: true });
+    renderSavedGames();
+  }
+});
+
+elements.inningsPlayed.addEventListener("input", () => {
+  if (state.latestGame && !state.latestGame.appliedToSeason) {
+    saveGameRecord({ silent: true });
+    renderSavedGames();
   }
 });
 elements.rosterInput.addEventListener("input", () => {
